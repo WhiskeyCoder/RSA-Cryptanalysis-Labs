@@ -1,0 +1,86 @@
+# Understanding Small Prime Attacks on RSA
+
+## The Vulnerability
+
+RSA depends on the computational difficulty of factoring large composite numbers into their prime components. When one of the prime factors is too small, it creates a significant vulnerability in the cryptosystem.
+
+This lab demonstrates what happens when an RSA key uses a prime factor that is small enough to be discovered through direct factorization methods.
+
+## Why Small Primes Are Dangerous
+
+An RSA modulus `n` is the product of two prime numbers, `p` and `q`. Typically, these primes should be:
+
+1. Large (at least 1024 bits each for a 2048-bit key)
+2. Random
+3. Similar in bit length
+
+When one of the primes is small:
+
+- It can be found through trial division or other factorization techniques
+- Once one prime is known, the other can be trivially calculated by `q = n/p`
+- With both primes, the private key can be reconstructed, completely breaking the encryption
+
+## Real-world Examples
+
+Small prime vulnerabilities have appeared in the wild:
+
+- In 2012, researchers discovered that many RSA keys used in real devices shared prime factors, allowing them to be factored
+- Several implementations have accidentally generated keys with small prime factors due to poor random number generators
+- Some embedded devices used predictable or weak seeding methods for prime generation
+
+## Detection Methods
+
+### Trial Division
+
+The simplest approach is trial division - testing if the modulus is divisible by small primes:
+
+```python
+def find_small_prime(n, limit):
+    for i in range(2, limit):
+        if n % i == 0:
+            return i
+    return None
+```
+
+This method is effective for finding very small factors (under a few million).
+
+### Online Services
+
+For larger but still vulnerable factors, online factorization services like FactorDB can be used. These services maintain databases of known factorizations and can handle larger numbers than simple trial division.
+
+### GCD Attacks
+
+If multiple RSA keys are available, computing the greatest common divisor (GCD) between their moduli can reveal shared factors, instantly compromising those keys.
+
+## Proper Key Generation
+
+To prevent small prime vulnerabilities, RSA keys should be generated with:
+
+1. Cryptographically secure random number generators
+2. Primality testing with proven algorithms (like Miller-Rabin)
+3. Appropriate bit lengths for security level (at least 2048 bits for the modulus)
+4. Balanced prime sizes (similar bit lengths for both primes)
+5. Checks to ensure minimal prime size requirements are met
+
+## The Attack Process
+
+The attack demonstrated in this lab follows these steps:
+
+1. Identify a small prime factor of the modulus (either through trial division or using a service like FactorDB)
+2. Calculate the second prime factor by simple division
+3. Compute Euler's totient function φ(n) = (p-1)(q-1)
+4. Calculate the private exponent d = e^(-1) mod φ(n)
+5. Decrypt the ciphertext using d
+
+## Security Implications
+
+This vulnerability highlights why random number quality is critical for cryptography. Weak or predictable random number generators have been the root cause of numerous cryptographic failures.
+
+In secure environments, specialized hardware random number generators are often used to ensure sufficient entropy for key generation.
+
+## Learning Resources
+
+To learn more about RSA factorization attacks:
+- [Boneh's Twenty Years of Attacks on the RSA Cryptosystem](https://crypto.stanford.edu/~dabo/pubs/papers/RSA-survey.pdf)
+- [The State of Elliptic Curve Cryptography](https://link.springer.com/chapter/10.1007/BFb0054851)
+- [Handbook of Applied Cryptography, Chapter 4](https://cacr.uwaterloo.ca/hac/)

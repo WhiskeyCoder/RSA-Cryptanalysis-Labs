@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+"""
+RSA Lab 3 - Private Key Analysis
+
+This script extracts RSA parameters from a private key file and formats them
+into the required flag format. It demonstrates reading and parsing RSA keys
+using Python's Crypto library.
+
+Author: Whiskey
+"""
+
+import argparse
+import os
+from typing import Tuple, Dict, Any
+from Crypto.PublicKey import RSA
+
+
+def extract_rsa_parameters(key_path: str) -> Dict[str, Any]:
+    """
+    Extract RSA parameters from a private key file.
+
+    Args:
+        key_path: Path to the RSA private key file
+
+    Returns:
+        Dictionary containing RSA parameters (n, e, d, p, q)
+
+    Raises:
+        FileNotFoundError: If the key file doesn't exist
+        ValueError: If the key file is invalid or not an RSA key
+    """
+    try:
+        if not os.path.exists(key_path):
+            raise FileNotFoundError(f"Key file not found: {key_path}")
+
+        with open(key_path, 'r') as key_file:
+            key_data = key_file.read()
+
+        # Import the key using PyCryptodome
+        try:
+            key = RSA.import_key(key_data)
+        except Exception as e:
+            raise ValueError(f"Failed to parse RSA key: {str(e)}")
+
+        # Extract the key parameters
+        parameters = {
+            'n': key.n,
+            'e': key.e,
+            'd': key.d,
+        }
+
+        # Extract p and q if available
+        if hasattr(key, 'p') and hasattr(key, 'q'):
+            parameters['p'] = key.p
+            parameters['q'] = key.q
+
+        return parameters
+
+    except Exception as e:
+        print(f"Error extracting RSA parameters: {str(e)}")
+        raise
+
+
+def format_flag(parameters: Dict[str, Any], format_type: str = 'simple') -> str:
+    """
+    Format the RSA parameters into the required flag format.
+
+    Args:
+        parameters: Dictionary of RSA parameters
+        format_type: The type of formatting to apply ('simple', 'full', 'compact')
+
+    Returns:
+        Formatted flag string
+    """
+    if format_type == 'simple':
+        # Format as ZD{n,e,d}
+        flag_content = f"{parameters['n']},{parameters['e']},{parameters['d']}"
+
+    elif format_type == 'full':
+        # Include all available parameters
+        components = []
+        for param in ['n', 'e', 'd', 'p', 'q']:
+            if param in parameters:
+                components.append(f"{param}:{parameters[param]}")
+        flag_content = ','.join(components)
+
+    elif format_type == 'compact':
+        # Just concatenate the values without separators
+        flag_content = f"{parameters['n']}{parameters['e']}{parameters['d']}"
+
+    else:
+        raise ValueError(f"Unknown format type: {format_type}")
+
+    return f"ZD{{{flag_content}}}"
+
+
+def verify_parameters(parameters: Dict[str, Any]) -> bool:
+    """
+    Verify that the RSA parameters are valid and consistent.
+
+    Args:
+        parameters: Dictionary of RSA parameters
+
+    Returns:
+        True if parameters are valid, False otherwise
+    """
+    n, e, d = parameters['n'], parameters['e'], parameters['d']
+
+    # Check if ed ≡ 1 (mod φ(n)) if p and q are available
+    if 'p' in parameters and 'q' in parameters:
+        p, q = parameters['p'], parameters['q']
+
+        # Check if n = p*q
+        if n != p * q:
+            print(f"Warning: n ({n}) is not equal to p*q ({p * q})")
+            return False
+
+        # Check if ed ≡ 1 (mod φ(n))
+        phi_n = (p - 1) * (q - 1)
+        if (e * d) % phi_n != 1:
+            print(f"Warning: e*d is not congruent to 1 modulo φ(n)")
+            return False
+
+    # If the relation can't be checked or is valid
+    return True
+
+
+def main():
+    """Main function to extract RSA parameters and generate a flag."""
+    parser = argparse.ArgumentParser(description="RSA Key Parameter Extractor")
+    parser.add_argument('--key', type=str, default="mykey2",
+                        help='Path to the RSA private key file')
+    parser.add_argument('--format', choices=['simple', 'full', 'compact'], default='simple',
+                        help='Flag format style')
+    parser.add_argument('--verify', action='store_true',
+                        help='Verify the consistency of the RSA parameters')
+    args = parser.parse_args()
+
+    try:
+        # Extract RSA parameters from the key file
+        parameters = extract_rsa_parameters(args.key)
+
+        # Print the individual parameters
+        print("RSA Key Parameters:")
+        print(f"n = {parameters['n']}")
+        print(f"e = {parameters['e']}")
+        print(f"d = {parameters['d']}")
+
+        if 'p' in parameters and 'q' in parameters:
+            print(f"p = {parameters['p']}")
+            print(f"q = {parameters['q']}")
+
+        # Verify parameters if requested
+        if args.verify:
+            if verify_parameters(parameters):
+                print("\n✅ RSA parameters are valid and consistent.")
+            else:
+                print("\n❌ RSA parameters are inconsistent!")
+
+        # Generate and print the flag
+        flag = format_flag(parameters, args.format)
+        print("\nFlag:")
+        print(flag)
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main())

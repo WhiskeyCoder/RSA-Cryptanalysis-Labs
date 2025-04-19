@@ -1,0 +1,85 @@
+# Understanding Modular Inverse in RSA
+
+When working with RSA cryptography, the concept of a modular inverse is central to generating the private key. This document explains what a modular inverse is, how it's calculated, and its role in RSA.
+
+## What is a Modular Inverse?
+
+In modular arithmetic, the modular multiplicative inverse of an integer `a` with respect to modulus `m` is another integer `x` such that:
+
+```
+a * x ≡ 1 (mod m)
+```
+
+This means that `(a * x) mod m = 1`.
+
+The modular inverse `x` is typically written as `a^(-1) mod m` or `modinv(a, m)`.
+
+## Key Properties
+
+1. A modular inverse exists if and only if `a` and `m` are coprime (have a greatest common divisor of 1).
+2. If the modular inverse exists, it is unique in the range `[0, m-1]`.
+3. For a prime modulus `p`, every number from 1 to `p-1` has a modular inverse modulo `p`.
+
+## Calculating the Modular Inverse
+
+The most common way to find the modular inverse is using the Extended Euclidean Algorithm. This algorithm finds integers `x` and `y` such that:
+
+```
+ax + my = gcd(a, m)
+```
+
+If `gcd(a, m) = 1` (i.e., `a` and `m` are coprime), then:
+
+```
+ax + my = 1
+```
+
+In this case, `x` is the modular inverse of `a` modulo `m`. The final step is to ensure `x` is in the range `[0, m-1]` by computing `x mod m`.
+
+## Role in RSA
+
+In RSA cryptography, the modular inverse is used to calculate the private exponent `d` from the public exponent `e`. Specifically:
+
+```
+d = e^(-1) mod φ(n)
+```
+
+Where:
+- `e` is the public exponent (commonly 65537)
+- `φ(n)` is Euler's totient function
+- For RSA with two prime factors `p` and `q`, `φ(n) = (p-1)(q-1)`
+
+This `d` value is the private exponent, which forms half of the private key pair `(d, n)`.
+
+## Extended Euclidean Algorithm Implementation
+
+The implementation in the `RSAKeyCalculator` class uses an iterative version of the Extended Euclidean Algorithm:
+
+```python
+def extended_gcd(a: int, b: int) -> Tuple[int, int, int]:
+    if a == 0:
+        return b, 0, 1
+
+    last_remainder, remainder = abs(a), abs(b)
+    x, last_x, y, last_y = 0, 1, 1, 0
+
+    while remainder:
+        quotient, remainder = divmod(last_remainder, remainder)
+        x, last_x = last_x - quotient * x, x
+        y, last_y = last_y - quotient * y, y
+        last_remainder = remainder
+
+    return (
+        last_remainder,
+        last_x * (-1 if a < 0 else 1),
+        last_y * (-1 if b < 0 else 1)
+    )
+```
+
+This algorithm works by maintaining a sequence of quotients and remainders from division steps, and using these to compute coefficients that satisfy the equation `ax + by = gcd(a, b)`.
+
+## Security Implications
+
+The security of RSA relies on the computational difficulty of finding the prime factors of a large number. If an attacker knows the prime factors `p` and `q`, they can calculate `φ(n)` and then easily compute `d` using the modular inverse, as demonstrated in this lab.
+
+This is why protecting the private key (or its components) is crucial for RSA security.

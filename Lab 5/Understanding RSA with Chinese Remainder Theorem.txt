@@ -1,0 +1,65 @@
+# Understanding RSA with Chinese Remainder Theorem
+
+The Chinese Remainder Theorem (CRT) is a powerful mathematical technique that can significantly speed up RSA decryption operations. This document explains how CRT works in the context of RSA and why it provides a substantial performance improvement.
+
+## Standard RSA Decryption
+
+In standard RSA decryption, to recover plaintext `m` from ciphertext `c`, we compute:
+
+```
+m = c^d mod n
+```
+
+Where:
+- `c` is the ciphertext
+- `d` is the private exponent
+- `n` is the modulus (product of primes p and q)
+
+This modular exponentiation is computationally expensive, especially for large values of `d` and `n`.
+
+## CRT-based RSA Decryption
+
+With the Chinese Remainder Theorem, we can perform the computation much more efficiently by working with smaller numbers.
+
+### Key Components
+
+For CRT-based RSA, we need the following parameters:
+- `p`, `q`: The prime factors of n
+- `dp`: `d mod (p-1)` (private exponent reduced modulo p-1)
+- `dq`: `d mod (q-1)` (private exponent reduced modulo q-1)
+- `qinv`: `q^(-1) mod p` (multiplicative inverse of q modulo p)
+
+### CRT Decryption Algorithm
+
+1. Compute `m1 = c^dp mod p`
+2. Compute `m2 = c^dq mod q`
+3. Compute `h = qinv * (m1 - m2) mod p`
+4. Compute `m = m2 + h * q`
+
+### Performance Benefits
+
+This approach is much faster because:
+
+1. **Smaller Exponents**: `dp` and `dq` are smaller than `d`, making exponentiation faster
+2. **Smaller Moduli**: Operations are performed modulo `p` and `q` instead of `n`, where typically `p` and `q` are roughly half the bit length of `n`
+3. **Parallel Computation**: The calculations of `m1` and `m2` can be performed in parallel
+
+The overall performance improvement is significant - CRT-based RSA decryption is typically 3-4 times faster than standard RSA decryption.
+
+## Mathematical Correctness
+
+The CRT method works based on the mathematical guarantees of the Chinese Remainder Theorem, which states that if we know the residues of a number modulo several coprime moduli, we can uniquely determine the number modulo the product of those moduli.
+
+In our case, we're determining `m mod p` and `m mod q`, and then using CRT to reconstruct `m mod n` (where `n = p*q`).
+
+## Security Considerations
+
+While CRT-based RSA is more efficient, it can potentially introduce side-channel vulnerabilities if not implemented carefully. Timing attacks and fault attacks have been demonstrated against naive implementations of CRT-RSA. Modern implementations typically include countermeasures such as:
+
+1. Blinding techniques to protect against timing attacks
+2. Verification steps to check the result before releasing it
+3. Careful error handling to prevent fault injection attacks
+
+## Implementation Notes
+
+The implementation in `rsa_lab5.py` demonstrates the basic CRT approach but should not be used for production cryptographic purposes without additional security measures.

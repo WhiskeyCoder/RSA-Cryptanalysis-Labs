@@ -1,0 +1,18 @@
+
+# Basic encryption (default message)
+python rsa_lab.py
+
+# Encrypting a custom message
+python rsa_lab.py --message "This is a secret message"
+
+# Encrypting and generating a flag
+python rsa_lab.py --generate-flag
+
+# Demonstrating decryption
+python rsa_lab.py --mode decrypt
+
+# Verifying the RSA keys
+python rsa_lab.py --mode verify
+
+# Full example with custom message and flag generation
+python rsa_lab.py --message "Top secret information" --generate-flag

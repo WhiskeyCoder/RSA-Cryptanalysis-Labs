@@ -1,0 +1,88 @@
+# Understanding Small Exponent Attacks on RSA
+
+## The Vulnerability
+
+RSA with small public exponents (like e=3) can be vulnerable to a direct root attack when **proper padding is not used**. This document explains why this happens and how the attack works.
+
+## The Mathematics Behind the Attack
+
+In RSA, encryption is performed as:
+```
+c = m^e mod n
+```
+
+Where:
+- c is the ciphertext
+- m is the plaintext message
+- e is the public exponent
+- n is the modulus (product of two primes)
+
+The "mod n" operation is only relevant when m^e ≥ n. If m^e < n, then:
+```
+c = m^e
+```
+
+This means that the ciphertext is simply the plaintext raised to the power e, without any modular reduction. In this case, decryption becomes trivial - just take the eth root of c:
+```
+m = e√c
+```
+
+## Why Small Exponents Make This More Likely
+
+When e is small (especially e=3), the condition m^e < n is more likely to be true:
+
+1. For e=3, if m < n^(1/3), then m^3 < n
+2. For a typical 2048-bit RSA key, n^(1/3) is about 683 bits
+3. Many messages are smaller than 683 bits (~85 bytes)
+
+This creates a scenario where the modular operation has no effect during encryption, making the security of RSA depend entirely on the difficulty of computing roots, which is not a hard problem.
+
+## Real-World Implications
+
+The vulnerability is particularly concerning in scenarios where:
+
+1. **Short messages** are encrypted (like session keys or timestamps)
+2. **No padding scheme** is used (like PKCS#1 v1.5 or OAEP)
+3. **Multiple recipients** receive the same message with the same exponent
+
+### The Broadcasting Attack
+
+A variant of this attack occurs when the same message is encrypted for multiple recipients using the same exponent e. Using the Chinese Remainder Theorem (CRT), an attacker can recover the message if they have at least e ciphertexts.
+
+## Defenses Against Small Exponent Attacks
+
+1. **Always use padding**: Modern padding schemes like PKCS#1 v1.5 or OAEP add randomness and increase the message size, ensuring m^e > n.
+
+2. **Use larger exponents**: While e=65537 (2^16+1) is standard, any reasonably large prime will do.
+
+3. **Ensure minimum message size**: Implement checks to ensure messages are sufficiently large before encryption.
+
+## The Attack in Practice
+
+To implement the attack when e=3:
+
+1. Check if m^3 < n by comparing the bit lengths
+2. If so, compute the cube root of c
+3. Convert the resulting integer back to the original message format
+
+For the cube root calculation, several methods exist:
+- Newton's method
+- Binary search
+- Integer cube root approximation
+- Specialized mathematical libraries
+
+## Historical Context
+
+This attack was first described by Johan Håstad in 1985, who proved that if k parties encrypt the same message with exponent e and different moduli, an attacker can recover the message if k ≥ e.
+
+The attack emphasizes why padding is a critical component of secure RSA implementations, not just an optional feature.
+
+## Relation to Other RSA Attacks
+
+Small exponent attacks are part of a family of attacks against improper RSA implementations:
+
+- **Bleichenbacher's attack**: Exploits padding verification in PKCS#1 v1.5
+- **Coppersmith's attack**: Uses lattice methods to find small roots of modular polynomials
+- **Related message attacks**: Exploits mathematical relationships between encrypted messages
+
+All these emphasize that RSA security depends on proper implementation of the complete cryptographic system, not just on large key sizes.
